@@ -1,16 +1,18 @@
 "use client";
 
-import Image from "next/image";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ChevronLeft, ChevronRight, Delete, Download, ImageIcon, LoaderCircle, Play } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Download, ImageIcon, Play } from "lucide-react";
 
 export default function Home() {
   const { register, handleSubmit } = useForm();
   const [result, setResult] = useState(null);
   const [selectedVideo, setSelectedVideo] = useState(null);
+  const [screenshots, setScreenshots] = useState([]);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [frameSpeed, setFrameSpeed] = useState(1);
 
   const onSubmit = async (data) => {
     try {
@@ -36,14 +38,14 @@ export default function Home() {
   const nextFrame = () => {
     const video = document.querySelector('video');
     if (video) {
-      video.currentTime = Math.min(video.currentTime + 0.1, video.duration);
+      video.currentTime = Math.min(video.currentTime + frameSpeed, video.duration);
     }
   }
 
   const previousFrame = () => {
     const video = document.querySelector('video');
     if (video) {
-      video.currentTime = Math.max(video.currentTime - 0.1, 0);
+      video.currentTime = Math.max(video.currentTime - frameSpeed, 0);
     }
   }
 
@@ -52,6 +54,9 @@ export default function Home() {
     if (!video) return;
 
     try {
+      setIsCapturing(true);
+      const timestamp = video.currentTime;
+      
       const response = await fetch('/api/screenshot', {
         method: 'POST',
         headers: {
@@ -59,39 +64,62 @@ export default function Home() {
         },
         body: JSON.stringify({
           videoUrl: selectedVideo.url,
-          timestamp: video.currentTime
-        })
+          timestamp,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to take screenshot');
+        const error = await response.json();
+        throw new Error(error.details || 'Failed to capture screenshot');
       }
 
-      // Get the blob from the response
       const blob = await response.blob();
-      
-      // Create a URL for the blob
+      if (blob.size === 0) {
+        throw new Error('Received empty screenshot');
+      }
+
       const url = URL.createObjectURL(blob);
+      const filename = `screenshot_${new Date().toISOString().replace(/[:.]/g, '-')}_${Math.random().toString(36).slice(2, 5)}.png`;
       
-      // Generate unique filename with date and random number
-      const date = new Date();
-      const formattedDate = date.toISOString().split('T')[0]; // YYYY-MM-DD
-      const time = date.toTimeString().split(' ')[0].replace(/:/g, '-'); // HH-MM-SS
-      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0'); // 000-999
-      const filename = `screenshot_${formattedDate}_${time}_${random}.png`;
-      
-      // Create and click a download link
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.click();
-      
-      // Clean up the URL
-      URL.revokeObjectURL(url);
+      setScreenshots(prev => [...prev, {
+        id: Math.random().toString(36).slice(2),
+        url,
+        filename,
+        timestamp,
+        blob
+      }]);
     } catch (error) {
       console.error('Screenshot error:', error);
+      alert('Failed to capture screenshot: ' + error.message);
+    } finally {
+      setIsCapturing(false);
     }
   }
+
+  // Cleanup URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      screenshots.forEach(screenshot => {
+        URL.revokeObjectURL(screenshot.url);
+      });
+    };
+  }, [screenshots]);
+
+  const downloadSelected = (screenshot) => {
+    const a = document.createElement('a');
+    a.href = screenshot.url;
+    a.download = screenshot.filename;
+    a.click();
+  }
+
+  const deleteSelected = (screenshot) => {
+    // Revoke the URL for the deleted screenshot
+    URL.revokeObjectURL(screenshot.url);
+    // Remove the screenshot from state
+    setScreenshots(prev => prev.filter(s => s.id !== screenshot.id));
+  }
+
+
 
   return (
     <div className="flex flex-col gap-4 h-screen items-center justify-center">
@@ -108,11 +136,57 @@ export default function Home() {
             />
           </div>
           <div className="flex gap-4">
+            <div className="flex gap-2 items-center">
+            <Button onClick={() => setFrameSpeed(frameSpeed - .1)} className="rounded-md" variant="outline">-</Button>
+            <p>{frameSpeed}</p>
+            <Button onClick={() => setFrameSpeed(frameSpeed + .1)} className="rounded-md" variant="outline">+</Button>
+            </div>
             <Button onClick={previousFrame} className="rounded-md" variant="outline"><ChevronLeft/></Button>
             <Button className="rounded-md" variant="outline"> <Play/> </Button>
             <Button onClick={nextFrame} className="rounded-md" variant="outline"><ChevronRight/></Button>
-            <Button onClick={screenshot} className="rounded-md" variant="outline"> <ImageIcon/> </Button>
+            <Button 
+              onClick={screenshot} 
+              className="rounded-md" 
+              variant="outline"
+              disabled={isCapturing}
+            > 
+              {isCapturing ? (
+                <div className="flex justify-center items-center">
+                  <div className="animate-spin"><LoaderCircle/></div>
+                </div>
+              ) : (
+                <ImageIcon/>
+              )}
+            </Button>
           </div>
+          {screenshots.length > 0 && (
+            <div className="flex flex-col items-center gap-4">
+                <div className="flex flex-wrap gap-4 mt-4">
+                  {screenshots.map(screenshot => (
+                    <div key={screenshot.id} className="relative">
+                      <img 
+                        src={screenshot.url} 
+                        alt={screenshot.filename}
+                        className="w-32 h-32 object-cover rounded-md"
+                      />
+                      <div className="absolute flex justify-between items-center bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1">
+                      <div>
+                        {Math.round(screenshot.timestamp)}s
+                      </div>
+                      <div className="flex gap-2">
+                      <a onClick={() => downloadSelected(screenshot)}><Download className="size-4"/></a>
+                        <a onClick={() => deleteSelected(screenshot)}><Delete className="size-4"/></a>
+                      </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-4">
+                  <Button>Download All</Button>
+                  <Button>Edit</Button>
+                </div>
+            </div>
+          )}
         </div>
         }
 
@@ -126,7 +200,7 @@ export default function Home() {
             </div>
           </form>
         :
-        <Button onClick={() => {setResult(null); setSelectedVideo(null);}}>New</Button> }
+        <Button onClick={() => {setResult(null); setSelectedVideo(null); setScreenshots([]);}}>New</Button> }
 
 
         { !selectedVideo &&
