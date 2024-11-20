@@ -13,6 +13,11 @@ export default function Home() {
   const [screenshots, setScreenshots] = useState([]);
   const [isCapturing, setIsCapturing] = useState(false);
   const [frameSpeed, setFrameSpeed] = useState(1);
+  const [startKeyframe, setStartKeyframe] = useState(null);
+  const [endKeyframe, setEndKeyframe] = useState(null);
+  const [isCreatingClip, setIsCreatingClip] = useState(false);
+  const [clipProgress, setClipProgress] = useState(0);
+  const [clipPhase, setClipPhase] = useState(1);
 
   const onSubmit = async (data) => {
     try {
@@ -119,7 +124,108 @@ export default function Home() {
     setScreenshots(prev => prev.filter(s => s.id !== screenshot.id));
   }
 
+  const handleCreateClip = async () => {
+    if (!selectedVideo?.url || startKeyframe === null || endKeyframe === null) return;
+    
+    setIsCreatingClip(true);
+    setClipProgress(0);
+    setClipPhase(1);
 
+    try {
+      // First request: Get progress updates
+      const response = await fetch('/api/clip', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          videoUrl: selectedVideo.url,
+          startTime: startKeyframe,
+          endTime: endKeyframe,
+          progressMode: true
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details || errorData.error || 'Failed to create clip');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const text = decoder.decode(value);
+        const lines = text.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(5));
+              console.log('Progress update:', data);
+              
+              setClipProgress(data.progress);
+              setClipPhase(data.phase);
+
+              if (data.done && data.tempOutputPath) {
+                console.log('Processing complete, downloading file');
+                
+                // Second request: Download the file
+                const downloadResponse = await fetch('/api/clip', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    videoUrl: selectedVideo.url,
+                    startTime: startKeyframe,
+                    endTime: endKeyframe,
+                    progressMode: false,
+                    tempOutputPath: data.tempOutputPath
+                  }),
+                });
+
+                if (!downloadResponse.ok) {
+                  const errorData = await downloadResponse.json();
+                  throw new Error(errorData.details || errorData.error || 'Failed to download clip');
+                }
+
+                const blob = await downloadResponse.blob();
+                if (blob.size === 0) {
+                  throw new Error('Received empty file');
+                }
+
+                console.log('Download complete, size:', blob.size);
+                
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `clip_${startKeyframe.toFixed(2)}_${endKeyframe.toFixed(2)}.mp4`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                break;
+              }
+            } catch (parseError) {
+              console.error('Error parsing progress data:', parseError);
+              console.log('Raw data:', line);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error creating clip:', error);
+      alert(error.message || 'Failed to create clip');
+    } finally {
+      setIsCreatingClip(false);
+      setClipProgress(0);
+      setClipPhase(1);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-4 h-screen items-center justify-center">
@@ -137,13 +243,23 @@ export default function Home() {
           </div>
           <div className="flex gap-4">
             <div className="flex gap-2 items-center">
-            <Button onClick={() => setFrameSpeed(frameSpeed - .1)} className="rounded-md" variant="outline">-</Button>
-            <p>{frameSpeed}</p>
-            <Button onClick={() => setFrameSpeed(frameSpeed + .1)} className="rounded-md" variant="outline">+</Button>
+            <Button 
+              onClick={() => setFrameSpeed(prev => Math.max(0.01, Number((prev - 0.01).toFixed(2))))} 
+              className="rounded-md" 
+              variant="outline"
+            >
+              -
+            </Button>
+            <p>{frameSpeed.toFixed(2)}</p>
+            <Button 
+              onClick={() => setFrameSpeed(prev => Math.min(1, Number((prev + 0.01).toFixed(2))))} 
+              className="rounded-md" 
+              variant="outline"
+            >
+              +
+            </Button>
             </div>
             <Button onClick={previousFrame} className="rounded-md" variant="outline"><ChevronLeft/></Button>
-            <Button className="rounded-md" variant="outline"> <Play/> </Button>
-            <Button onClick={nextFrame} className="rounded-md" variant="outline"><ChevronRight/></Button>
             <Button 
               onClick={screenshot} 
               className="rounded-md" 
@@ -158,6 +274,66 @@ export default function Home() {
                 <ImageIcon/>
               )}
             </Button>
+            <Button onClick={nextFrame} className="rounded-md" variant="outline"><ChevronRight/></Button>
+            
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => {
+                    const video = document.querySelector('video');
+                    if (video) {
+                      setStartKeyframe(video.currentTime);
+                    }
+                  }}
+                  variant={startKeyframe !== null ? "default" : "outline"}
+                >
+                  {startKeyframe !== null ? `Start: ${startKeyframe.toFixed(2)}s` : 'Set Start'}
+                </Button>
+                <Button 
+                  onClick={() => {
+                    const video = document.querySelector('video');
+                    if (video) {
+                      setEndKeyframe(video.currentTime);
+                    }
+                  }}
+                  variant={endKeyframe !== null ? "default" : "outline"}
+                >
+                  {endKeyframe !== null ? `End: ${endKeyframe.toFixed(2)}s` : 'Set End'}
+                </Button>
+              </div>
+              {startKeyframe !== null && endKeyframe !== null && (
+                <div className="flex items-center space-x-4">
+                  <Button
+                    className={`px-4 py-2 rounded ${
+                      isCreatingClip
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-blue-500 hover:bg-blue-600'
+                    } text-white font-semibold transition-colors`}
+                    onClick={handleCreateClip}
+                    disabled={isCreatingClip}
+                  >
+                    {isCreatingClip ? 'Creating Clip...' : 'Create Clip'}
+                  </Button>
+                  
+                  {isCreatingClip && (
+                    <div className="flex-1 space-y-2">
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div
+                          className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                          style={{ width: `${clipProgress}%` }}
+                        ></div>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {clipPhase === 1 && 'Extracting clip...'}
+                        {clipPhase === 2 && 'Converting to MP4...'}
+                        {clipPhase === 3 && 'Finalizing...'}
+                        {' '}({Math.round(clipProgress)}%)
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           {screenshots.length > 0 && (
             <div className="flex flex-col items-center gap-4">
