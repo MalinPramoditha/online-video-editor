@@ -233,12 +233,18 @@ export default function Home() {
 
         { selectedVideo &&  
         <div className="flex flex-col gap-4 items-center">
-          <div className="flex justify-center">
+          <div className="relative w-full max-w-3xl mx-auto">
             <video 
               src={selectedVideo.url}
               controls 
-              width={500} 
-              height={200}
+              playsInline
+              webkit-playsinline="true"
+              x5-playsinline="true"
+              style={{
+                maxHeight: '70vh',
+                objectFit: 'contain',
+                backgroundColor: 'black'
+              }}
             />
           </div>
           <div className="flex gap-4">
@@ -310,9 +316,20 @@ export default function Home() {
                         : 'bg-blue-500 hover:bg-blue-600'
                     } text-white font-semibold transition-colors`}
                     onClick={handleCreateClip}
-                    disabled={isCreatingClip}
+                    disabled={!selectedVideo?.url || startKeyframe === null || endKeyframe === null || isCreatingClip}
                   >
-                    {isCreatingClip ? 'Creating Clip...' : 'Create Clip'}
+                    {isCreatingClip ? (
+                      <>
+                        <div className="flex items-center gap-2">
+                          Extracting... {clipProgress.toFixed(0)}%
+                          {clipPhase === 1 && "(Processing)"}
+                          {clipPhase === 2 && "(Converting)"}
+                          {clipPhase === 3 && "(Finalizing)"}
+                        </div>
+                      </>
+                    ) : (
+                      'Extract Clip'
+                    )}
                   </Button>
                   
                   {isCreatingClip && (
