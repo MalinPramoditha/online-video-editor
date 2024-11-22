@@ -1,26 +1,24 @@
 'use client'
-import React, { useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button';
 import {
     Card,
     CardContent,
-    CardDescription,
-    CardFooter,
-    CardHeader,
-    CardTitle,
-  } from "@/components/ui/card"
-import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, CornerLeftDown, CornerRightDown, Image, LoaderCircle, LoaderIcon, Play, Scissors } from 'lucide-react';
-import { set } from 'react-hook-form';
-  
+    CardFooter
+} from "@/components/ui/card";
+import { ChevronLeft, ChevronRight, CornerLeftDown, CornerRightDown, Image, LoaderCircle, Play, Scissors } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import Seekbar from './Seekbar';
 
-export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChange }) {
-    const [selectedVideo, setSelectedVideo] = useState('https://rr6---sn-uxax4vopj5qx-q0n6.googlevideo.com/videoplayback?expire=1732291095&ei=t1VAZ4e4M7jLi9oP98LKsA8&ip=176.1.194.6&id=o-AIfqFwfADY91t1wJXRRqatTAnPbrUENAQWC9tB9TAnEF&itag=136&aitags=133%2C134%2C135%2C136%2C137%2C160%2C242%2C243%2C244%2C247%2C248%2C271%2C278%2C313%2C394%2C395%2C396%2C397%2C398%2C399%2C400%2C401&source=youtube&requiressl=yes&xpc=EgVo2aDSNQ%3D%3D&met=1732269495%2C&mh=va&mm=31%2C29&mn=sn-uxax4vopj5qx-q0n6%2Csn-4g5e6nsy&ms=au%2Crdu&mv=m&mvi=6&pl=18&rms=au%2Cau&initcwndbps=1083750&bui=AQn3pFSWBEwHACe6QKTAE8SmYn_kI7PErSBgDsHpfdcXVP_6LF0arFaSX8E5pf_xOH4spqBkwMK8L0Ab&spc=qtApAcQHVBCVa1-Xp1yWh5dF3NFqGLHStdCE_Ed3bJ3S_MOiYQ&vprv=1&svpuc=1&mime=video%2Fmp4&ns=2tnBY1cc0AXmmbrsfMDt1tcQ&rqh=1&gir=yes&clen=25413749&dur=197.600&lmt=1729734200078899&mt=1732268954&fvip=5&keepalive=yes&fexp=51319288%2C51326932%2C51335594&c=WEB&sefc=1&txp=4532434&n=TlfB5Hr8weTQuQ&sparams=expire%2Cei%2Cip%2Cid%2Caitags%2Csource%2Crequiressl%2Cxpc%2Cbui%2Cspc%2Cvprv%2Csvpuc%2Cmime%2Cns%2Crqh%2Cgir%2Cclen%2Cdur%2Clmt&lsparams=met%2Cmh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpl%2Crms%2Cinitcwndbps&lsig=AGluJ3MwRAIgDY6fmGYK9NmmyHDh6jd0ywmNO1xuLOnvoUDX-tJsf44CIBXh02hvrbyP6RO7JL3hu1ONsTzI2EhowwPUCdIhW5m9&sig=AJfQdSswRgIhALvtTfGDWyKaYa9nD73DFqrWvj07fVWlcBWsVLE7xMjvAiEA2LYpYGzkDDV_ZcusoIeBnR0oxZ1CR6QfOtAgc0t0aMQ%3D');
+
+export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChange, props }) {
+    const [selectedVideo, setSelectedVideo] = useState("https://rr4---sn-npoe7nsr.googlevideo.com/videoplayback?expire=1732313268&ei=VKxAZ6-zMKXi6dsPjOmI-A4&ip=176.6.137.121&id=o-ANTMLu8iXZs1NMqY5EA_wbO22ol1FQFxryRS2UlZdiKC&itag=18&source=youtube&requiressl=yes&xpc=EgVo2aDSNQ%3D%3D&bui=AQn3pFTd3jBenK2-K7U2IujQdyESdCMDCCy4Z9N2XTTl46hAoCfFXaCIFgxchCmRxh1X7tVaAYD41PIb&spc=qtApAYL6ZHEaT39ie-_fNsFiPqo9hh55a2os-Wmz51dNlJMKpCAt&vprv=1&svpuc=1&mime=video%2Fmp4&ns=uBTlS5QHpvf0B-IQazSZgZkQ&rqh=1&cnr=14&ratebypass=yes&dur=205.171&lmt=1662910177796340&fexp=24350590,24350655,24350675,24350705,24350737,51326932,51335594&c=WEB&sefc=1&txp=5318224&n=csXHNZEJM-tVGg&sparams=expire%2Cei%2Cip%2Cid%2Citag%2Csource%2Crequiressl%2Cxpc%2Cbui%2Cspc%2Cvprv%2Csvpuc%2Cmime%2Cns%2Crqh%2Ccnr%2Cratebypass%2Cdur%2Clmt&sig=AJfQdSswRAIgERcNkwMJTO9ABC9_QiQnZCWGehNBKKTaOg1XwVRM41cCIB5DN3nTQyHsbaH28hvieItd73gKDa7HLv1XaxJL5nHP&rm=sn-uxax4vopj5qx-cxgz7z&rrc=79,80&req_id=de64493c1452a3ee&redirect_counter=2&cm2rm=sn-4g5e6r7z&cms_redirect=yes&cmsv=e&met=1732291683,&mh=qX&mip=175.157.48.104&mm=34&mn=sn-npoe7nsr&ms=ltu&mt=1732290197&mv=u&mvi=4&pl=22&rms=ltu,au&lsparams=met,mh,mip,mm,mn,ms,mv,mvi,pl,rms&lsig=AGluJ3MwRgIhAJB-rE4Mo9KYTvmkbz6747JHX6ZCpjDxc6PFaHN6eIy5AiEAwZRykTyV9lIkVqsNiInbgb2RAqie7tJBJ8sXmTMouis%3D");
     const [screenshots, setScreenshots] = useState([]);
-    const [timelineImages, setTimelineImages] = useState([]);
     const [isCapturing, setIsCapturing] = useState(false);
+   const [timelineImages, setTimelineImages] = useState([]);
+   const videoRef = useRef(null);
   
     const screenshot = async () => {
-        const video = document.querySelector('video');
+        const video = videoRef.current;
         if (!video) return;
     
         try {
@@ -71,7 +69,7 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
 
      
       const createTimeline = () => {    
-            const video = document.querySelector('video');
+            const video = videoRef.current;
             const duration = video?.duration || 0;
             const interval = duration / 10;
             const timestamps = [];
@@ -118,8 +116,8 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
               blob
             });
           }
-          setTimelineImages(screenshots.concat(newScreenshots));
-          onTimelineImagesChange?.(screenshots.concat(newScreenshots));
+        //   onTimelineImagesChange?.(screenshots.concat(newScreenshots));
+        setTimelineImages(screenshots.concat(newScreenshots));
           console.log('Screenshots:', screenshots);
             
         }
@@ -132,28 +130,25 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
    }, [selectedVideo])
 
    const nextFrame = () => {
-    const video = document.querySelector('video');
+    const video = videoRef.current;
     if (video) {
-      video.currentTime = Math.min(video.currentTime + 0.5, video.duration);
+      video.currentTime = Math.min(video.currentTime + 1, video.duration);
+      
     }
   }
 
   const previousFrame = () => {
-    const video = document.querySelector('video');
+    const video = videoRef.current;
     if (video) {
       video.currentTime = Math.max(video.currentTime - 0.5, 0);
     }
   }
-       
-
-
-
-  
+      
   
     return (
-    <div className='w-full'>
+    <div className='w-full flex flex-col gap-2'>
         <Card>
-            <CardContent className='py-6'>
+            <CardContent className='py-6 w-full justify-center'>
                 {/* <video controls src={selectedVideo}  className='w-full'/> */}
                 <video 
               src={selectedVideo}
@@ -161,11 +156,13 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
               playsInline
               webkit-playsinline="true"
               x5-playsinline="true"
-              style={{
-                maxHeight: '70vh',
-                objectFit: 'contain',
-                backgroundColor: 'black'
-              }}
+              ref={videoRef}
+            //   style={{
+            //     maxHeight: '70vh',
+            //     objectFit: 'contain',
+            //     backgroundColor: 'black'
+            //   }}
+              className='w-full max-h-[70vh] h-full object-contain bg-black' 
               />
             </CardContent>
             <CardFooter>
@@ -212,6 +209,12 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
                     </div>
                 </div>
             </CardFooter>
+        </Card>
+
+        <Card>
+            <CardContent>
+                <Seekbar timelineImages={timelineImages} video={videoRef}/>
+            </CardContent> 
         </Card>
     </div>
   )
