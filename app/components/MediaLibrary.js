@@ -29,7 +29,7 @@ export default function MediaLibrary({ screenshots = [] }) {
                     </ToggleGroupItem>
                 </ToggleGroup>
             </div>
-            <ScrollArea className="">
+            <ScrollArea className="max-h-96 overflow-y-auto">
                 { toggleValue ?
                     <div className='flex flex-wrap gap-2 p-2'>
                         {screenshots.map((screenshot) => (

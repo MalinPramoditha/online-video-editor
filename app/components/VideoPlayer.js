@@ -124,9 +124,6 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
             
         }
 
-console.log('timelineImages:', timelineImages)
-         
-
    useEffect(() => {
     if(!selectedVideo){
         return
@@ -134,7 +131,19 @@ console.log('timelineImages:', timelineImages)
     createTimeline()
    }, [selectedVideo])
 
+   const nextFrame = () => {
+    const video = document.querySelector('video');
+    if (video) {
+      video.currentTime = Math.min(video.currentTime + 0.5, video.duration);
+    }
+  }
 
+  const previousFrame = () => {
+    const video = document.querySelector('video');
+    if (video) {
+      video.currentTime = Math.max(video.currentTime - 0.5, 0);
+    }
+  }
        
 
 
@@ -179,14 +188,14 @@ console.log('timelineImages:', timelineImages)
                                 <ChevronRight/>
                         </Button>
                     </div>
-                    <div className='flex gap-1'>
+                    <div className='flex gap-1' onClick={previousFrame}>
                         <Button variant="outline">
                                 <ChevronLeft/>
                         </Button>
-                        <Button variant="outline">
+                        <Button variant="outline" >
                                 <Play/>
                         </Button>
-                        <Button variant="outline">
+                        <Button variant="outline" onClick={nextFrame}>
                                 <ChevronRight/>
                         </Button>
                     </div>
