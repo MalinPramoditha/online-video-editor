@@ -58,6 +58,21 @@ export default function Seekbar({ timelineImages = [], video }) {
     };
   }, [dragging]);
 
+    useEffect(() => {
+      if (video?.current) {
+        const videoElement = video.current;
+        videoElement.addEventListener('progress', () => {
+          const buffered = videoElement.buffered;
+          if (buffered.length > 0) {
+            const end = buffered.end(buffered.length - 1);
+            console.log(`Buffered until ${end} seconds`);
+          }
+        });
+      }
+    }, [video]);
+
+  
+
   return (
     <div className='w-full py-2 border-t'>
       <div className='flex justify-between text-xs text-gray-500 py-2'>
@@ -80,7 +95,7 @@ export default function Seekbar({ timelineImages = [], video }) {
             ))}
         </div>
           :
-            <div className='flex justify-center items-center w-full h-20 gap-2 text-sm text-primary'>
+            <div className='flex justify-center items-center w-full h-20 gap-2 text-sm text-primary z-10'>
                 <div className='animate-spin flex items-center justify-center'>
                     <LoaderCircle className='size-4'/>
                 </div>
@@ -90,12 +105,15 @@ export default function Seekbar({ timelineImages = [], video }) {
          
         { timelineImages.length !== 0 &&
         <div style={{ left: `${position}px`, transform: 'translateX(-50%)' }}
-          className='absolute top-0 bottom-0 w-1 bg-primary cursor-ew-resize select-none'
+          className='absolute top-0 bottom-0 w-1 bg-primary cursor-ew-resize select-none z-10'
           onMouseDown={handleMouseDown}
         >
           <div className='absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-primary rounded-full' />
         </div>
         }
+        <div style={{ left: `${position}px` }} className='absolute w-full top-0 bottom-0 bg-black/70 cursor-ew-resize select-none' >
+
+        </div>
       </div>
     </div>
   )
