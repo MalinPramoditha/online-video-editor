@@ -11,6 +11,7 @@ import Seekbar from '@/app/components/Seekbar'
 
 export default function page() {
   const [screenshots, setScreenshots] = useState([]);
+  const [timelineImages, setTimelineImages] = useState([]);
 
   return (
     <div className='w-full'>
@@ -20,10 +21,10 @@ export default function page() {
             </ResizablePanel>
             <ResizableHandle />
             <ResizablePanel defaultSize={50} minSize={50} className='p-2'>
-                <VideoPlayer onScreenshotsChange={setScreenshots}/>
+                <VideoPlayer onScreenshotsChange={setScreenshots } onTimelineImagesChange={setTimelineImages}/>
             </ResizablePanel>
         </ResizablePanelGroup>
-        <Seekbar/>
+        <Seekbar timelineImages={timelineImages}/>
 
     </div>
   )

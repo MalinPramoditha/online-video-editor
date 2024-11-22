@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from '@/components/ui/button'
 
 export default function MediaLibrary({ screenshots = [] }) {
-  const [toggleValue, setToggleValue] = useState(false);
+  const [toggleValue, setToggleValue] = useState(true);
   
   // Log screenshots whenever they change
   useEffect(() => {
