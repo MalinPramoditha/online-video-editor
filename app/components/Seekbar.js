@@ -2,12 +2,16 @@
 import { LoaderCircle } from 'lucide-react';
 import React, { useEffect, useState, useRef } from 'react'
 
-export default function Seekbar({ video, onSeek, timelineImages = [] }) {
+export default function Seekbar({ video, onSeek, timelineImages = [], duration }) {
   console.log('Video duration:', video?.duration);
   const seekbarRef = useRef(null);
   const [position, setPosition] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [bufferedPosition, setBufferedPosition] = useState(0);
+
+  useEffect(() => {
+    console.log('Duration:', duration);
+  }, [duration]);
 
   useEffect(() => {
     console.log('Timeline images changed:', timelineImages);
@@ -17,6 +21,8 @@ export default function Seekbar({ video, onSeek, timelineImages = [] }) {
     event.preventDefault();
     setIsDragging(true);
     updatePosition(event);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
   }
 
   const handleMouseMove = (event) => {
@@ -26,46 +32,64 @@ export default function Seekbar({ video, onSeek, timelineImages = [] }) {
     }
   }
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
+  const handleMouseUp = (event) => {
+    if (isDragging) {
+      updatePosition(event);
+      setIsDragging(false);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    }
+  }
+
+  const handleClick = (event) => {
+    if (!isDragging) {
+      updatePosition(event);
+    }
   }
 
   const updatePosition = (event) => {
-    if (!seekbarRef.current || !video?.current) return;
+    if (!seekbarRef.current || !duration) return;
     
     const rect = seekbarRef.current.getBoundingClientRect();
-    const x = event.clientX - rect.left;
+    const x = Math.max(0, Math.min(event.clientX - rect.left, rect.width));
     const width = rect.width;
     
     // Calculate the percentage (0 to 1)
-    const percentage = Math.max(0, Math.min(x, width)) / width;
+    const percentage = x / width;
     
-    // Calculate the new time based on video duration
-    const newTime = percentage * video.current.duration;
-    
-    // Update position and seek video
+    // Update position
     setPosition(x);
+    
+    // Seek video
+    const newTime = percentage * duration;
     if (onSeek) {
       onSeek(newTime);
     }
   }
 
   useEffect(() => {
-    // Add mouse move and up listeners to window
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-      // Prevent text selection while dragging
-      document.body.style.userSelect = 'none';
-    }
-
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
-      // Restore text selection
-      document.body.style.userSelect = '';
     };
-  }, [isDragging]);
+  }, []);
+
+  // Update position when video time updates
+  useEffect(() => {
+    const updateVideoProgress = () => {
+      if (video?.current && !isDragging && duration) {
+        const percentage = video.current.currentTime / duration;
+        const width = seekbarRef.current?.clientWidth || 0;
+        setPosition(percentage * width);
+      }
+    };
+
+    const videoElement = video?.current;
+    if (videoElement) {
+      videoElement.addEventListener('timeupdate', updateVideoProgress);
+      return () => videoElement.removeEventListener('timeupdate', updateVideoProgress);
+    }
+  }, [video, isDragging, duration]);
 
   // Update buffered position
   useEffect(() => {
@@ -75,7 +99,6 @@ export default function Seekbar({ video, onSeek, timelineImages = [] }) {
       const buffered = video.current.buffered;
       if (buffered.length > 0) {
         const bufferedEnd = buffered.end(buffered.length - 1);
-        const duration = video.current.duration;
         const width = seekbarRef.current?.clientWidth || 0;
         const newPosition = (bufferedEnd / duration) * width;
         setBufferedPosition(newPosition);
@@ -96,7 +119,7 @@ export default function Seekbar({ video, onSeek, timelineImages = [] }) {
         videoElement.removeEventListener('loadedmetadata', updateBufferedPosition);
       }
     };
-  }, [video]);
+  }, [video, duration]);
 
   const formatTime = (time) => {
     const minutes = Math.floor(time / 60);
@@ -108,11 +131,16 @@ export default function Seekbar({ video, onSeek, timelineImages = [] }) {
     <div className='w-full py-2 border-t relative'>
       <div className='flex justify-between text-xs text-gray-500 py-2'>
         {[...Array(10).keys()].map(i => (
-          <p key={i}>{`${Math.floor((i * (video?.current?.duration / 10)) / 60)}:${(((i * (video?.current?.duration / 10)) % 60) / 100).toFixed(2).slice(-2)}`}</p>
+          <p key={i}>{formatTime(i * (duration / 10))}</p>
         ))}
       </div>
 
-      <div className='relative select-none h-20 w-full ' ref={seekbarRef}>
+      <div 
+        className='relative select-none h-20 w-full cursor-pointer' 
+        ref={seekbarRef}
+        onClick={handleClick}
+        onMouseDown={handleMouseDown}
+      >
         { timelineImages.length !== 0 ?
             <div className='flex rounded-md overflow-hidden justify-between bg-gray-500 overflow-hidden relative'>
             {timelineImages.map((image, index) => (
@@ -141,11 +169,10 @@ export default function Seekbar({ video, onSeek, timelineImages = [] }) {
         { timelineImages.length !== 0 &&
         <div 
           style={{ 
-            left: `${position ? (position / seekbarRef.current?.clientWidth) * 100 : (video?.current?.currentTime / video?.current?.duration) * 100}%`, 
+            left: `${position}px`, 
             transform: 'translateX(-50%)' 
           }}
           className='absolute top-0 bottom-0 w-1 bg-primary cursor-ew-resize select-none z-10'
-          onMouseDown={handleMouseDown}
         >
           <div className='absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-primary rounded-full' />
           <div className='bg-primary absolute -top-7 left-1/2 transform -translate-x-1/2 text-xs p-1 rounded-md'>

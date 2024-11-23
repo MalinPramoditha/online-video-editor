@@ -16,7 +16,7 @@ function createCanvas(width, height) {
  * Captures a single frame from a video element
  * @param {HTMLVideoElement} videoElement - The video element to capture from
  * @param {number} timestamp - The timestamp to capture at (in seconds)
- * @returns {Promise<{url: string, timestamp: number, blob: Blob}>}
+ * @returns {Promise<{id: string, url: string, timestamp: number, blob: Blob}>}
  */
 export async function captureVideoFrame(videoElement, timestamp) {
     if (!videoElement) {
@@ -69,6 +69,7 @@ export async function captureVideoFrame(videoElement, timestamp) {
         const url = URL.createObjectURL(blob);
         
         return {
+            id: `screenshot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             url,
             timestamp,
             blob
@@ -113,7 +114,7 @@ async function createTempVideo(videoSrc) {
 /**
  * Generates 10 evenly distributed screenshots from a video source
  * @param {string} videoSrc - Source URL of the video
- * @returns {Promise<Array<{url: string, timestamp: number, blob: Blob}>>}
+ * @returns {Promise<Array<{id: string, url: string, timestamp: number, blob: Blob}>>}
  */
 export async function generateTimelineScreenshots(videoSrc) {
     let tempVideo = null;

@@ -5,7 +5,7 @@ import {
     CardContent,
     CardFooter
 } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, CornerLeftDown, CornerRightDown, Image, LoaderCircle, Play, Scissors } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CornerLeftDown, CornerRightDown, Image, LoaderCircle, Minus, Pause, Play, Plus, Scissors } from 'lucide-react';
 import { captureVideoFrame, generateTimelineScreenshots, cleanupScreenshots } from '../utils/videoUtils';
 import { useEffect, useState, useRef } from 'react';
 import Seekbar from './Seekbar';
@@ -16,6 +16,8 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
     const [screenshots, setScreenshots] = useState([]);
     const [isCapturing, setIsCapturing] = useState(false);
     const [timelineImages, setTimelineImages] = useState([]);
+    const [duration, setDuration] = useState(0);
+    const [isPlaying, setIsPlaying] = useState(false);
     const videoRef = useRef(null);
 
     // Get proxied video URL
@@ -104,23 +106,64 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
       video.currentTime = Math.max(video.currentTime - 0.5, 0);
     }
   }
-      
-  
+
+  const handleSeek = (time) => {
+        if (videoRef.current) {
+            videoRef.current.currentTime = time;
+            // Ensure the video plays after seeking if it was already playing
+            if (!videoRef.current.paused) {
+                videoRef.current.play();
+            }
+        }
+    };
+
+    const togglePlayPause = () => {
+        if (videoRef.current) {
+            if (isPlaying) {
+                videoRef.current.pause();
+            } else {
+                videoRef.current.play();
+            }
+            setIsPlaying(!isPlaying);
+        }
+    };
+
+    // Update isPlaying state when video plays or pauses
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video) return;
+
+        const handlePlay = () => setIsPlaying(true);
+        const handlePause = () => setIsPlaying(false);
+        const handleEnded = () => setIsPlaying(false);
+
+        video.addEventListener('play', handlePlay);
+        video.addEventListener('pause', handlePause);
+        video.addEventListener('ended', handleEnded);
+
+        return () => {
+            video.removeEventListener('play', handlePlay);
+            video.removeEventListener('pause', handlePause);
+            video.removeEventListener('ended', handleEnded);
+        };
+    }, []);
+
     return (
     <div className='w-full flex flex-col gap-2'>
         <Card>
             <CardContent className='py-6 w-full justify-center'>
                 <video 
                     src={videoSource}
-                    controls 
+                    // controls 
                     playsInline
                     webkit-playsinline="true"
                     x5-playsinline="true"
                     ref={videoRef}
                     crossOrigin="anonymous"
                     className='w-full max-h-[70vh] h-full object-contain bg-black'
-                    onLoadedMetadata={() => {
+                    onLoadedMetadata={(e) => {
                         if (videoRef.current) {
+                            setDuration(videoRef.current.duration);
                             createTimeline();
                         }
                     }}
@@ -140,18 +183,18 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
                               }
                         </Button>
                         <Button variant="outline">
-                                <Play/>
+                                <Minus/>
                         </Button>
                         <Button variant="outline">
-                                <ChevronRight/>
+                                <Plus/>
                         </Button>
                     </div>
-                    <div className='flex gap-1' onClick={previousFrame}>
-                        <Button variant="outline">
+                    <div className='flex gap-1'>
+                        <Button variant="outline" onClick={previousFrame}>
                                 <ChevronLeft/>
                         </Button>
-                        <Button variant="outline" >
-                                <Play/>
+                        <Button variant="outline" onClick={togglePlayPause}>
+                                {isPlaying ? <Pause/> : <Play/>}
                         </Button>
                         <Button variant="outline" onClick={nextFrame}>
                                 <ChevronRight/>
@@ -174,7 +217,12 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
 
         <Card>
             <CardContent>
-                <Seekbar timelineImages={timelineImages} video={videoRef}/>
+                <Seekbar 
+                    video={videoRef} 
+                    onSeek={handleSeek} 
+                    timelineImages={timelineImages}
+                    duration={duration}
+                />
             </CardContent> 
         </Card>
     </div>
