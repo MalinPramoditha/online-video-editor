@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { ArrowRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import React, { useState } from 'react'
+import useVideoStore from '@/app/store/videoStore';
 
 const sampleData = {
   "formats": [
@@ -161,12 +162,15 @@ const sampleData = {
 export default function page() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(sampleData);
+  const [result, setResult] = useState();
+
+
+  const { setVideoSrc } = useVideoStore();
 
   const router = useRouter();
 
   const selectedVideo = (format) => {
-  
+    setVideoSrc(format.url);
     router.push(`/extract`);
   }
 

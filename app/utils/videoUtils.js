@@ -119,6 +119,7 @@ async function createTempVideo(videoSrc) {
 export async function generateTimelineScreenshots(videoSrc) {
     let tempVideo = null;
     const screenshots = [];
+    const THUMBNAIL_WIDTH = 160; // Fixed small width for thumbnails
 
     try {
         // Create temporary video element
@@ -130,20 +131,61 @@ export async function generateTimelineScreenshots(videoSrc) {
 
         const totalScreenshots = 10;
         const duration = tempVideo.duration;
-        const interval = duration / (totalScreenshots - 1); // -1 to include both start and end
+        const interval = duration / (totalScreenshots - 1);
+
+        // Calculate aspect ratio to maintain proportions
+        const aspectRatio = tempVideo.videoHeight / tempVideo.videoWidth;
+        const thumbnailHeight = Math.floor(THUMBNAIL_WIDTH * aspectRatio);
 
         for (let i = 0; i < totalScreenshots; i++) {
             const timestamp = i * interval;
-            const screenshot = await captureVideoFrame(tempVideo, timestamp);
+            
+            // Create a smaller canvas for the thumbnail
+            const { canvas, context } = createCanvas(THUMBNAIL_WIDTH, thumbnailHeight);
+            
+            // Seek to timestamp
+            tempVideo.currentTime = timestamp;
+            
+            // Wait for seek to complete
+            await new Promise((resolve) => {
+                const seekHandler = () => {
+                    tempVideo.removeEventListener('seeked', seekHandler);
+                    resolve();
+                };
+                tempVideo.addEventListener('seeked', seekHandler);
+            });
+
+            // Draw scaled video frame directly to small canvas
+            context.drawImage(tempVideo, 0, 0, THUMBNAIL_WIDTH, thumbnailHeight);
+
+            // Convert to blob with lower quality
+            const blob = await new Promise((resolve) => {
+                canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.6);
+            });
+
+            if (!blob) {
+                continue; // Skip this thumbnail if blob creation fails
+            }
+
+            const url = URL.createObjectURL(blob);
             screenshots.push({
-                ...screenshot,
+                id: `screenshot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                url,
+                timestamp,
+                blob,
                 index: i
             });
+
+            // Emit each thumbnail as it's generated
+            if (typeof window !== 'undefined' && window.dispatchEvent) {
+                window.dispatchEvent(new CustomEvent('thumbnailGenerated', {
+                    detail: { index: i, total: totalScreenshots }
+                }));
+            }
         }
 
         return screenshots;
     } catch (error) {
-        // Clean up any created URLs before throwing
         screenshots.forEach(screenshot => {
             if (screenshot.url) {
                 URL.revokeObjectURL(screenshot.url);
@@ -151,7 +193,6 @@ export async function generateTimelineScreenshots(videoSrc) {
         });
         throw error;
     } finally {
-        // Clean up temporary video element
         if (tempVideo) {
             tempVideo.remove();
         }

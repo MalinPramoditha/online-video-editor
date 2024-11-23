@@ -5,37 +5,71 @@ import {
     CardContent,
     CardFooter
 } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, CornerLeftDown, CornerRightDown, Image, LoaderCircle, Minus, Pause, Play, Plus, Scissors } from 'lucide-react';
+import { ArrowLeftRight, ChevronLeft, ChevronRight, CornerLeftDown, CornerRightDown, Gauge, Image, LoaderCircle, Minus, Pause, Play, Plus, Scissors } from 'lucide-react';
 import { captureVideoFrame, generateTimelineScreenshots, cleanupScreenshots } from '../utils/videoUtils';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import Seekbar from './Seekbar';
 
 
-export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChange, props }) {
-    const [selectedVideo, setSelectedVideo] = useState("https://rr2---sn-8vq54voxqx-cxgs.googlevideo.com/videoplayback?expire=1732360818&ei=EmZBZ62vLdO16dsPxvrZkQU&ip=109.40.243.143&id=o-AFMmCI7jm8PBNLLpVGGkp-z5Vcd2ofazAHsBD0noTmRN&itag=137&aitags=133%2C134%2C135%2C136%2C137%2C160%2C242%2C243%2C244%2C247%2C248%2C278%2C330%2C331%2C332%2C333%2C334%2C335&source=youtube&requiressl=yes&xpc=EgVo2aDSNQ%3D%3D&met=1732339218%2C&mh=nJ&mm=31%2C29&mn=sn-8vq54voxqx-cxgs%2Csn-i5h7lnls&ms=au%2Crdu&mv=m&mvi=2&pcm2cms=yes&pl=18&rms=au%2Cau&initcwndbps=1410000&bui=AQn3pFRcUCr2hlRIZoUGmj4zuqShpW8IjD8Q4Uxd7BzO2iadIKZmTz3b7Ld0dmlqrFOF2TOlw0kkg68l&spc=qtApAXsd2p6Pl7FRPCXZ4yRphCzjdpoJHppEpJyazSu1VGE0Og&vprv=1&svpuc=1&mime=video%2Fmp4&ns=4dG2dx6sMTSjgGcGDNGsXEAQ&rqh=1&gir=yes&clen=198271699&dur=380.100&lmt=1726578452866979&mt=1732338792&fvip=4&keepalive=yes&fexp=51326932%2C51335594&c=WEB&sefc=1&txp=6309224&n=OdJwrKZ3BvUPGQ&sparams=expire%2Cei%2Cip%2Cid%2Caitags%2Csource%2Crequiressl%2Cxpc%2Cbui%2Cspc%2Cvprv%2Csvpuc%2Cmime%2Cns%2Crqh%2Cgir%2Cclen%2Cdur%2Clmt&sig=AJfQdSswRQIgCQPAO1TpgVlbvZOzE7Gea4AJmytc7IARCFN47TYY4QYCIQDJPLptjKdiWJeszuzSMhiMSrRy82ECPNU1-Ehw5yiV2Q%3D%3D&lsparams=met%2Cmh%2Cmm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpcm2cms%2Cpl%2Crms%2Cinitcwndbps&lsig=AGluJ3MwRAIgVGZJRbfYXWr4AqxvM0xOnF5wyF6iTYLIqovtp_iHrIQCIGYnel0T6E3qdl-MYHCccAd_SNvC7bXT8lI_ihJbkmae");
+export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChange, video }) {
+    const [selectedVideo, setSelectedVideo] = useState(video);
     const [screenshots, setScreenshots] = useState([]);
     const [isCapturing, setIsCapturing] = useState(false);
     const [timelineImages, setTimelineImages] = useState([]);
     const [duration, setDuration] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [loadingFrame, setLoadingFrame] = useState(null); // 'next', 'previous', or null
+    const [showFrameSpeedControls, setShowFrameSpeedControls] = useState(false);
+    const [showPlayerSpeedControls, setShowPlayerSpeedControls] = useState(false);
+    const [playbackSpeed, setPlaybackSpeed] = useState(1);
+    const [frameSpeed, setFrameSpeed] = useState(1);
     const videoRef = useRef(null);
+
+    console.log('Selected video:', selectedVideo);
 
     // Get proxied video URL
     const getProxiedUrl = (url) => {
         if (!url) return '';
-        try {
-            return `/api/proxy?url=${encodeURIComponent(url)}`;
-        } catch (e) {
-            console.error('Error encoding URL:', e);
-            return '';
-        }
+        return `/api/proxy?url=${encodeURIComponent(url)}`;
     };
+
+    const decreaseSpeed = useCallback(() => {
+        setPlaybackSpeed(prev => Math.round((Math.max(0.10, prev - 0.10)) * 100) / 100);
+    }, []);
+
+    const increaseSpeed = useCallback(() => {
+        setPlaybackSpeed(prev => Math.round((Math.min(4, prev + 0.10)) * 100) / 100);
+    }, []);
+
+    const decreaseFrameSpeed = useCallback(() => {
+        setFrameSpeed(prev => {
+            if (prev > 0.10) {
+                return Number((prev - 0.10).toFixed(2));
+            }
+            return Math.max(0.01, Number((prev - 0.01).toFixed(2)));
+        });
+    }, []);
+
+    const increaseFrameSpeed = useCallback(() => {
+        setFrameSpeed(prev => {
+            if (prev >= 0.10) {
+                return Math.min(4, Number((prev + 0.10).toFixed(2)));
+            }
+            return Math.min(0.10, Number((prev + 0.01).toFixed(2)));
+        });
+    }, []);
 
     useEffect(() => {
         if (videoRef.current) {
             videoRef.current.load();
         }
     }, [selectedVideo]);
+
+    useEffect(() => {
+        if (videoRef.current) {
+            videoRef.current.playbackRate = playbackSpeed;
+        }
+    }, [playbackSpeed]);
 
     const handleVideoLoaded = () => {
         setError(null);
@@ -92,18 +126,45 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
         };
     }, []);
 
-   const nextFrame = () => {
+   const nextFrame = async () => {
     const video = videoRef.current;
     if (video) {
-      video.currentTime = Math.min(video.currentTime + 1, video.duration);
-      
+        setLoadingFrame('next');
+        try {
+            const seekPromise = new Promise((resolve) => {
+                const seekHandler = () => {
+                    video.removeEventListener('seeked', seekHandler);
+                    resolve();
+                };
+                video.addEventListener('seeked', seekHandler);
+            });
+
+            video.currentTime = Math.min(video.currentTime + frameSpeed, video.duration);
+            await seekPromise;
+        } finally {
+            setLoadingFrame(null);
+        }
     }
   }
 
-  const previousFrame = () => {
+  const previousFrame = async () => {
     const video = videoRef.current;
     if (video) {
-      video.currentTime = Math.max(video.currentTime - 0.5, 0);
+      setLoadingFrame('previous');
+      try {
+        const seekPromise = new Promise((resolve) => {
+          const seekHandler = () => {
+            video.removeEventListener('seeked', seekHandler);
+            resolve();
+          };
+          video.addEventListener('seeked', seekHandler);
+        });
+
+        video.currentTime = Math.max(video.currentTime - frameSpeed, 0);
+        await seekPromise;
+      } finally {
+        setLoadingFrame(null);
+      }
     }
   }
 
@@ -170,46 +231,124 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
                 />
             </CardContent>
             <CardFooter>
-                <div className='w-full flex justify-between items-center'>
-                    <div className='flex gap-1'>
-                        <Button variant="outline" onClick={captureScreenshot} disabled={isCapturing}>
-                            {isCapturing ?
-                           
-                            <div className='animate-spin'>
-                                <LoaderCircle className='text-primary'/>
-                            </div>
-                             :
-                              <Image/>
-                              }
-                        </Button>
-                        <Button variant="outline">
-                                <Minus/>
-                        </Button>
-                        <Button variant="outline">
-                                <Plus/>
-                        </Button>
+                <div className='w-full flex flex-col justify-between items-center'>
+                    <div className='flex justify-between items-center w-full text-xs py-1'>
+                        <p>Frame Speed : {frameSpeed.toFixed(2)}x</p>
+                        <p>Play Speed : {playbackSpeed.toFixed(2)}x</p>
                     </div>
-                    <div className='flex gap-1'>
-                        <Button variant="outline" onClick={previousFrame}>
-                                <ChevronLeft/>
-                        </Button>
-                        <Button variant="outline" onClick={togglePlayPause}>
-                                {isPlaying ? <Pause/> : <Play/>}
-                        </Button>
-                        <Button variant="outline" onClick={nextFrame}>
-                                <ChevronRight/>
-                        </Button>
-                    </div>
-                    <div className='flex gap-1'>
-                        <Button variant="outline">
-                                <CornerLeftDown/>
-                        </Button>
-                        <Button variant="outline">
-                                <CornerRightDown/>
-                        </Button>
-                        <Button variant="outline">
-                                <Scissors/>
-                        </Button>
+                    <div className='w-full flex justify-between items-center'>
+                        <div className='flex gap-1'>
+                            <Button variant="outline" onClick={captureScreenshot} disabled={isCapturing}>
+                                {isCapturing ?
+                            
+                                <div className='animate-spin'>
+                                    <LoaderCircle className='text-primary'/>
+                                </div>
+                                :
+                                <Image/>
+                                }
+                            </Button>
+                            <Button variant="outline">
+                                    <Minus/>
+                            </Button>
+                            <Button variant="outline">
+                                    <Plus/>
+                            </Button>
+                        </div>
+                        <div className='flex gap-1'>
+                            <Button variant="outline" onClick={previousFrame} disabled={loadingFrame === 'previous'}>
+                                {loadingFrame === 'previous' ? 
+                                    <div className="animate-spin">
+                                        <LoaderCircle className="h-4 w-4"/>
+                                    </div> 
+                                    : 
+                                    <ChevronLeft/>
+                                }
+                            </Button>
+                            <Button variant="outline" onClick={togglePlayPause}>
+                                    {isPlaying ? <Pause/> : <Play/>}
+                            </Button>
+                            <Button variant="outline" onClick={nextFrame} disabled={loadingFrame === 'next'}>
+                                {loadingFrame === 'next' ? 
+                                    <div className="animate-spin">
+                                        <LoaderCircle className="h-4 w-4"/>
+                                    </div> 
+                                    : 
+                                    <ChevronRight/>
+                                }
+                            </Button>
+                        </div>
+                        <div className='flex gap-1'>
+                            {showFrameSpeedControls ? (
+                                <div className='flex rounded-md p-1 border transition-all duration-300 ease-in-out transform origin-left'>
+                                    <a className='flex gap-1 items-center px-3 hover:bg-accent rounded-sm transition-colors' onClick={() => {setShowFrameSpeedControls(false); setShowPlayerSpeedControls(false)}}>
+                                        <ArrowLeftRight className='size-4'/>
+                                    </a>
+
+                                    <div className='flex gap-2 items-center border-l overflow-hidden animate-in slide-in-from-left'>
+                                        <a 
+                                            className='flex gap-1 items-center px-3 py-1 hover:bg-accent rounded-sm transition-colors'
+                                            onClick={decreaseFrameSpeed}
+                                        >
+                                            <Minus className='size-4'/>
+                                        </a>
+                                        <div className='px-1 text-sm'>
+                                            <p>{frameSpeed.toFixed(2)}x</p>
+                                        </div>
+                                        <a 
+                                            className='flex gap-1 items-center px-3 py-1 hover:bg-accent rounded-sm transition-colors'
+                                            onClick={increaseFrameSpeed}
+                                        >
+                                            <Plus className='size-4'/>
+                                        </a>
+                                    </div>
+                                </div>
+                            ) : (
+                                <Button 
+                                    variant="outline" 
+                                    onClick={() => {setShowFrameSpeedControls(true); setShowPlayerSpeedControls(false)}}
+                                    className="transition-all duration-300 ease-in-out hover:bg-accent"
+                                >
+                                    <ArrowLeftRight/>
+                                </Button>
+                            )}
+
+
+                            {showPlayerSpeedControls ? (
+                                <div className='flex rounded-md p-1 border transition-all duration-300 ease-in-out transform origin-right'>
+                                    <div className='flex gap-2 items-center border-r overflow-hidden animate-in slide-in-from-right'>
+                                        <a 
+                                            className='flex gap-1 items-center px-3 py-1 hover:bg-accent rounded-sm transition-colors'
+                                            onClick={decreaseSpeed}
+                                        >
+                                            <Minus className='size-4'/>
+                                        </a>
+                                        <div className='px-1 text-sm'>
+                                            <p>{playbackSpeed.toFixed(2)}x</p>
+                                        </div>
+                                        <a 
+                                            className='flex gap-1 items-center px-3 py-1 hover:bg-accent rounded-sm transition-colors'
+                                            onClick={increaseSpeed}
+                                        >
+                                            <Plus className='size-4'/>
+                                        </a>
+                                    </div>
+
+                                    <a className='flex gap-1 items-center px-3 hover:bg-accent rounded-sm transition-colors' onClick={() => setShowPlayerSpeedControls(false)}>
+                                        <Gauge className='size-4'/>
+                                    </a>
+                                </div>
+                            ) : (
+                                <Button 
+                                    variant="outline" 
+                                    onClick={() => {setShowPlayerSpeedControls(true); setShowFrameSpeedControls(false)}}
+                                    className="transition-all duration-300 ease-in-out hover:bg-accent"
+                                >
+                                    <Gauge/>
+                                </Button>
+                            )}
+
+                        </div>
                     </div>
                 </div>
             </CardFooter>
