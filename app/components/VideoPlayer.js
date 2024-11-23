@@ -6,7 +6,7 @@ import {
     CardFooter
 } from "@/components/ui/card";
 import { ChevronLeft, ChevronRight, CornerLeftDown, CornerRightDown, Image, LoaderCircle, Play, Scissors } from 'lucide-react';
-import { generateTimelineScreenshots } from '../utils/videoUtils';
+import { captureVideoFrame, generateTimelineScreenshots, cleanupScreenshots } from '../utils/videoUtils';
 import { useEffect, useState, useRef } from 'react';
 import Seekbar from './Seekbar';
 
@@ -42,73 +42,34 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
     // Video source with proxy
     const videoSource = getProxiedUrl(selectedVideo);
 
-    const screenshot = async () => {
-        const video = videoRef.current;
-        if (!video) return;
-    
+    const captureScreenshot = async () => {
+        if (!videoRef.current) return;
+        
         try {
             setIsCapturing(true);
-            const timestamp = video.currentTime;
-            
-            // Create canvas and capture frame
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d', { willReadFrequently: true });
-            
-            // Set background to black first
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw the video frame
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
-            try {
-                // Try to get blob directly
-                const blob = await new Promise((resolve) => {
-                    canvas.toBlob(resolve, 'image/jpeg', 0.95);
-                });
-                
-                if (!blob) throw new Error('Failed to create blob');
-                
-                // Create object URL
-                const url = URL.createObjectURL(blob);
-                const filename = `screenshot_${timestamp}.jpg`;
-                
-                const newScreenshot = { url, filename, timestamp, blob };
-                const updatedScreenshots = [...screenshots, newScreenshot];
-                setScreenshots(updatedScreenshots);
-                onScreenshotsChange?.(updatedScreenshots);
-            } catch (error) {
-                console.error('Canvas export error:', error);
-                // Fallback: Try to get base64 data
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-                const response = await fetch(dataUrl);
-                const blob = await response.blob();
-                
-                const url = URL.createObjectURL(blob);
-                const filename = `screenshot_${timestamp}.jpg`;
-                
-                const newScreenshot = { url, filename, timestamp, blob };
-                const updatedScreenshots = [...screenshots, newScreenshot];
-                setScreenshots(updatedScreenshots);
-                onScreenshotsChange?.(updatedScreenshots);
-            }
+            const screenshot = await captureVideoFrame(videoRef.current, videoRef.current.currentTime);
+            setScreenshots(prev => {
+                const newScreenshots = [...prev, screenshot];
+                if (onScreenshotsChange) {
+                    onScreenshotsChange(newScreenshots);
+                }
+                return newScreenshots;
+            });
         } catch (error) {
-            console.error('Error capturing screenshot:', error);
+            console.error('Failed to capture screenshot:', error);
         } finally {
             setIsCapturing(false);
         }
     };
 
     const createTimeline = async () => {
-        if (!videoRef.current) return;
+        if (!selectedVideo) return;
         
         try {
-            const screenshots = await generateTimelineScreenshots(videoRef.current);
-            setTimelineImages(screenshots);
+            const newTimelineImages = await generateTimelineScreenshots(videoSource);
+            setTimelineImages(newTimelineImages);
             if (onTimelineImagesChange) {
-                onTimelineImagesChange(screenshots);
+                onTimelineImagesChange(newTimelineImages);
             }
         } catch (error) {
             console.error('Failed to create timeline:', error);
@@ -124,19 +85,10 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
 
        useEffect(() => {
         return () => {
-            // Cleanup object URLs when component unmounts
-            screenshots.forEach(screenshot => {
-                if (screenshot.url) {
-                    URL.revokeObjectURL(screenshot.url);
-                }
-            });
-            timelineImages.forEach(image => {
-                if (image.url) {
-                    URL.revokeObjectURL(image.url);
-                }
-            });
+            cleanupScreenshots(screenshots);
+            cleanupScreenshots(timelineImages);
         };
-    }, [screenshots, timelineImages]);
+    }, []);
 
    const nextFrame = () => {
     const video = videoRef.current;
@@ -177,7 +129,7 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
             <CardFooter>
                 <div className='w-full flex justify-between items-center'>
                     <div className='flex gap-1'>
-                        <Button variant="outline" onClick={screenshot} disabled={isCapturing}>
+                        <Button variant="outline" onClick={captureScreenshot} disabled={isCapturing}>
                             {isCapturing ?
                            
                             <div className='animate-spin'>
