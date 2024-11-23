@@ -194,7 +194,6 @@ export default function page() {
     }
   }
 
-  console.log(result);
   return (
     <div className='flex flex-col h-screen w-full justify-center items-center'>
         <div className='flex items-center p-2 gap-2'>

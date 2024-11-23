@@ -25,8 +25,6 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
     const [frameSpeed, setFrameSpeed] = useState(1);
     const videoRef = useRef(null);
 
-    console.log('Selected video:', selectedVideo);
-
     // Get proxied video URL
     const getProxiedUrl = (url) => {
         if (!url) return '';

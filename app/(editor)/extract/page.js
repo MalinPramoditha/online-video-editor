@@ -16,6 +16,8 @@ export default function Page() {
   const [timelineImages, setTimelineImages] = useState([]);
   const [selectedVideo, setSelectedVideo] = useState(videoSrc);
   
+  
+
     return (
     <div className='w-full'>
         <ResizablePanelGroup direction="horizontal">
