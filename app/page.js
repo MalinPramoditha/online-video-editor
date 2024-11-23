@@ -159,7 +159,7 @@ const sampleData = {
 }
 
 
-export default function page() {
+export default function Page() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState();
