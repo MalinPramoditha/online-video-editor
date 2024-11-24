@@ -26,17 +26,24 @@ export default function Page() {
   const getVideos = async () => {
     setLoading(true);
     try {
-      await fetch(`/api/extract`,{
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
+      const response = await fetch(`${baseUrl}/api/extract`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ url : url }),
-      }).then((res) => res.json())
-      .then(setResult)
-
+        body: JSON.stringify({ url }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setResult(data);
     } catch (error) {
-      console.log(error);
+      console.error('Error fetching video:', error);
+      // You might want to show this error to the user
     } finally {
       setLoading(false);
     }

@@ -2,21 +2,28 @@
   command = "npm run build"
   publish = ".next"
 
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
 [[headers]]
-  for = "/api/proxy"
+  for = "/api/*"
   [headers.values]
     Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, HEAD, OPTIONS"
+    Access-Control-Allow-Methods = "GET, HEAD, OPTIONS, POST"
     Access-Control-Allow-Headers = "Range, Accept, Content-Type"
     Access-Control-Expose-Headers = "Content-Range, Content-Length, Accept-Ranges"
+    Cache-Control = "no-cache"
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
 
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/nextjs-server"
+  to = "/.netlify/functions/server/api/:splat"
   status = 200
   force = true
 
 [[redirects]]
   from = "/*"
-  to = "/.netlify/functions/nextjs-server"
+  to = "/.netlify/functions/server/:splat"
   status = 200
+  force = true
