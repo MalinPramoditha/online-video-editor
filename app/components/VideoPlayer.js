@@ -28,17 +28,27 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
     // Get proxied video URL
     const getProxiedUrl = useCallback((url) => {
         if (!url) return '';
-        // Use relative URL for production compatibility
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
-        return `${baseUrl}/api/proxy?url=${encodeURIComponent(url)}`;
+        const proxyUrl = `${baseUrl}/api/proxy?url=${encodeURIComponent(url)}`;
+        console.log('Proxied URL:', proxyUrl);
+        return proxyUrl;
     }, []);
 
     useEffect(() => {
         if (video) {
+            console.log('Original video URL:', video);
             const proxiedUrl = getProxiedUrl(video);
             setSelectedVideo(proxiedUrl);
         }
     }, [video, getProxiedUrl]);
+
+    useEffect(() => {
+        if (videoRef.current) {
+            videoRef.current.addEventListener('error', (e) => {
+                console.error('Video error:', e);
+            });
+        }
+    }, [selectedVideo]);
 
     const decreaseSpeed = useCallback(() => {
         setPlaybackSpeed(prev => Math.round((Math.max(0.10, prev - 0.10)) * 100) / 100);

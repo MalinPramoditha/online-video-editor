@@ -11,52 +11,65 @@ export async function GET(request) {
             return NextResponse.json({ error: 'URL parameter is required' }, { status: 400 });
         }
 
-        // Forward the request headers
-        const headers = new Headers();
-        request.headers.forEach((value, key) => {
-            if (key.toLowerCase() === 'range') {
-                headers.set(key, value);
-            }
-        });
+        // Create headers for YouTube request
+        const requestHeaders = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': '*/*',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Range': request.headers.get('range') || 'bytes=0-',
+            'Origin': 'https://www.youtube.com',
+            'Referer': 'https://www.youtube.com/',
+            'Sec-Fetch-Dest': 'video',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'cross-site',
+            'Connection': 'keep-alive'
+        };
 
-        // Add YouTube headers
-        headers.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-        headers.set('Origin', 'https://www.youtube.com');
-        headers.set('Referer', 'https://www.youtube.com');
-
+        // Make request to YouTube
         const response = await fetch(url, {
-            headers,
-            method: request.method,
-            duplex: 'half',
+            headers: requestHeaders,
+            method: 'GET'
         });
 
         if (!response.ok) {
-            return NextResponse.json({ error: 'Failed to fetch video' }, { status: response.status });
+            console.error('YouTube response error:', response.status, response.statusText);
+            return NextResponse.json({ 
+                error: 'Failed to fetch video',
+                status: response.status,
+                statusText: response.statusText 
+            }, { status: response.status });
         }
 
-        // Forward the response headers
-        const responseHeaders = new Headers();
-        response.headers.forEach((value, key) => {
-            if (!['content-length', 'content-encoding', 'transfer-encoding'].includes(key.toLowerCase())) {
-                responseHeaders.set(key, value);
-            }
+        // Get content type and other important headers
+        const contentType = response.headers.get('content-type');
+        const contentLength = response.headers.get('content-length');
+        const contentRange = response.headers.get('content-range');
+
+        // Create response headers
+        const responseHeaders = new Headers({
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+            'Access-Control-Allow-Headers': 'Range, Accept, Content-Type',
+            'Access-Control-Expose-Headers': 'Content-Range, Content-Length, Accept-Ranges',
+            'Content-Type': contentType || 'video/mp4',
+            'Accept-Ranges': 'bytes'
         });
 
-        // Set CORS and caching headers
-        responseHeaders.set('Access-Control-Allow-Origin', '*');
-        responseHeaders.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-        responseHeaders.set('Access-Control-Allow-Headers', 'Range');
-        responseHeaders.set('Access-Control-Expose-Headers', 'Content-Range, Content-Length');
-        responseHeaders.set('Cache-Control', 'public, max-age=31536000');
+        // Forward important headers if they exist
+        if (contentLength) responseHeaders.set('Content-Length', contentLength);
+        if (contentRange) responseHeaders.set('Content-Range', contentRange);
 
+        // Create and return response
         return new NextResponse(response.body, {
             status: response.status,
-            statusText: response.statusText,
-            headers: responseHeaders,
+            headers: responseHeaders
         });
     } catch (error) {
         console.error('Proxy error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return NextResponse.json({ 
+            error: 'Internal server error',
+            message: error.message 
+        }, { status: 500 });
     }
 }
 
@@ -66,8 +79,8 @@ export async function OPTIONS(request) {
         headers: {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-            'Access-Control-Allow-Headers': 'Range',
-            'Access-Control-Max-Age': '86400',
-        },
+            'Access-Control-Allow-Headers': 'Range, Accept, Content-Type',
+            'Access-Control-Max-Age': '86400'
+        }
     });
 }
