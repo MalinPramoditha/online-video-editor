@@ -158,27 +158,23 @@ const sampleData = {
 
 }
 
-
-export default function page() {
+export default function Page() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState();
-
+  const [result, setResult] = useState(sampleData);
 
   const { setVideoSrc } = useVideoStore();
-
   const router = useRouter();
 
   const selectedVideo = (format) => {
     setVideoSrc(format.url);
-    router.push(`/extract`);
-  }
-
+    router.push('/extract');
+  };
 
   const getVideos = async () => {
     setLoading(true);
     try {
-      await fetch(`/api/extract`,{
+      await fetch('/api/extract',{
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -192,7 +188,7 @@ export default function page() {
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <div className='flex flex-col h-screen w-full justify-center items-center'>
