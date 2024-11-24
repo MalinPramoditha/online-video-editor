@@ -5,6 +5,11 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+[build.environment]
+  NEXT_USE_NETLIFY_EDGE = "true"
+  NODE_VERSION = "18"
+  NEXT_TELEMETRY_DISABLED = "1"
+
 [[headers]]
   for = "/api/*"
   [headers.values]
@@ -13,17 +18,3 @@
     Access-Control-Allow-Headers = "Range, Accept, Content-Type"
     Access-Control-Expose-Headers = "Content-Range, Content-Length, Accept-Ranges"
     Cache-Control = "no-cache"
-    X-Frame-Options = "DENY"
-    X-Content-Type-Options = "nosniff"
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/server/api/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/*"
-  to = "/.netlify/functions/server/:splat"
-  status = 200
-  force = true
