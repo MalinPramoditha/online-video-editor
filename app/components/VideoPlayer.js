@@ -29,20 +29,15 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
     // Get proxied video URL
     const getProxiedUrl = useCallback((url) => {
         if (!url) return '';
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
-        // Check if the URL is already encoded
-        const encodedUrl = url.includes('%') ? url : encodeURIComponent(url);
-        const proxyUrl = `${baseUrl}/api/proxy?url=${encodedUrl}`;
-        console.log('Original URL:', url);
-        console.log('Encoded URL:', encodedUrl);
-        console.log('Proxied URL:', proxyUrl);
-        return proxyUrl;
+        const baseUrl = window.location.origin;
+        return `${baseUrl}/api/proxy?url=${encodeURIComponent(url)}`;
     }, []);
 
     useEffect(() => {
         if (video) {
             console.log('Original video URL:', video);
             const proxiedUrl = getProxiedUrl(video);
+            console.log('Proxied URL:', proxiedUrl);
             setSelectedVideo(proxiedUrl);
         }
     }, [video, getProxiedUrl]);
@@ -122,7 +117,7 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
         setError(null);
     };
 
-    // Video source with proxy
+    // Video source with proxied URL
     const videoSource = selectedVideo;
 
     const captureScreenshot = async () => {

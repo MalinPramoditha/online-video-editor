@@ -12,21 +12,34 @@ export default function Page() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState();
 
-
   const { setVideoSrc } = useVideoStore();
-
   const router = useRouter();
 
   const selectedVideo = (format) => {
-    setVideoSrc(format.url);
-    router.push(`/extract`);
-  }
+    console.log('Selected format:', format);
+    
+    if (!format) {
+      console.error('No format provided');
+      return;
+    }
 
+    // If format has a direct URL, use it
+    if (format.url) {
+      console.log('Using direct URL:', format.url);
+      setVideoSrc(format.url);
+      router.push(`/extract`);
+      return;
+    }
+
+    console.error('No valid URL found in format:', format);
+  }
 
   const getVideos = async () => {
     setLoading(true);
     try {
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
+      console.log('Fetching video info for URL:', url);
+      
       const response = await fetch(`${baseUrl}/api/extract`, {
         method: 'POST',
         headers: {
@@ -40,10 +53,10 @@ export default function Page() {
       }
       
       const data = await response.json();
+      console.log('Received video data:', data);
       setResult(data);
     } catch (error) {
       console.error('Error fetching video:', error);
-      // You might want to show this error to the user
     } finally {
       setLoading(false);
     }
@@ -62,7 +75,7 @@ export default function Page() {
           <img src={result?.thumbnailUrl} className='rounded-md' />
 
           <div className='flex flex-wrap gap-2 py-4'>
-            {result?.formats.map((format) => (
+            {result?.formats?.map((format) => (
             <Button 
               key={format.formatId} 
               variant={"outline"}
@@ -84,13 +97,14 @@ export default function Page() {
                 </span>
               </div>
               <div className="text-xs text-muted-foreground">
-                {format.ext.toUpperCase()} • {format.fps ? `${format.fps}fps •` : ''} 
+                {format.ext?.toUpperCase()} • {format.fps ? `${format.fps}fps •` : ''} 
                 {format.audioQuality ? ` ${format.audioQuality.replace('AUDIO_QUALITY_', '')}` : ''}
                 {format.bitrate ? ` • ${Math.round(format.bitrate / 1024)}kbps` : ''}
               </div>
             </Button>
             ))}
           </div>
+
         </div>
     </div>
   )

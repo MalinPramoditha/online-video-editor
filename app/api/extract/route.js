@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 export async function POST(request) {
     try {
         const body = await request.json();
+        console.log('Extracting info for URL:', body.url);
+
         const result = await fetch('https://submagic-free-tools.fly.dev/api/youtube-info', {
             method: "POST",
             body: JSON.stringify(body),
@@ -32,7 +34,32 @@ export async function POST(request) {
         }
 
         const data = await result.json();
-        return NextResponse.json(data, {
+        console.log('Received video formats:', data.formats?.length || 0);
+
+        // Ensure we have the correct format structure
+        const formats = data.formats?.map(format => ({
+            ...format,
+            url: format.url,
+            type: format.hasVideo && format.hasAudio ? 'video_with_audio' :
+                  format.hasVideo ? 'video_only' :
+                  format.hasAudio ? 'audio' : 'unknown',
+            quality: format.qualityLabel || format.quality || format.resolution || 'Unknown',
+            ext: format.container || format.ext || 'unknown',
+            fps: format.fps,
+            audioQuality: format.audioQuality,
+            bitrate: format.bitrate,
+            formatId: format.formatId || format.itag || Math.random().toString(36).substring(7)
+        })) || [];
+
+        const response = {
+            ...data,
+            formats,
+            thumbnailUrl: data.thumbnailUrl || data.thumbnail
+        };
+
+        console.log('Sending response with formats:', formats.length);
+
+        return NextResponse.json(response, {
             headers: {
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'POST, OPTIONS',
