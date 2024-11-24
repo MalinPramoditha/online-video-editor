@@ -12,7 +12,7 @@ import Seekbar from './Seekbar';
 
 
 export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChange, video }) {
-    const [selectedVideo, setSelectedVideo] = useState(video);
+    const [selectedVideo, setSelectedVideo] = useState('');
     const [screenshots, setScreenshots] = useState([]);
     const [isCapturing, setIsCapturing] = useState(false);
     const [timelineImages, setTimelineImages] = useState([]);
@@ -26,10 +26,19 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
     const videoRef = useRef(null);
 
     // Get proxied video URL
-    const getProxiedUrl = (url) => {
+    const getProxiedUrl = useCallback((url) => {
         if (!url) return '';
-        return `/api/proxy?url=${encodeURIComponent(url)}`;
-    };
+        // Use relative URL for production compatibility
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
+        return `${baseUrl}/api/proxy?url=${encodeURIComponent(url)}`;
+    }, []);
+
+    useEffect(() => {
+        if (video) {
+            const proxiedUrl = getProxiedUrl(video);
+            setSelectedVideo(proxiedUrl);
+        }
+    }, [video, getProxiedUrl]);
 
     const decreaseSpeed = useCallback(() => {
         setPlaybackSpeed(prev => Math.round((Math.max(0.10, prev - 0.10)) * 100) / 100);
@@ -74,7 +83,7 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
     };
 
     // Video source with proxy
-    const videoSource = getProxiedUrl(selectedVideo);
+    const videoSource = selectedVideo;
 
     const captureScreenshot = async () => {
         if (!videoRef.current) return;
