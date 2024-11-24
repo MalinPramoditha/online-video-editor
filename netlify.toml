@@ -10,12 +10,20 @@
   NODE_VERSION = "18"
   NEXT_TELEMETRY_DISABLED = "1"
 
+[[edge_functions]]
+function = "api/*"
+
 [[headers]]
   for = "/*"
   [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Origin, X-Requested-With, Content-Type, Accept, Range"
+    Access-Control-Expose-Headers = "Content-Range, Content-Length, Accept-Ranges"
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
 
 [[headers]]
   for = "/api/*"

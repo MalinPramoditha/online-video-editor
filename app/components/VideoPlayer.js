@@ -30,7 +30,11 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
     const getProxiedUrl = useCallback((url) => {
         if (!url) return '';
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
-        const proxyUrl = `${baseUrl}/api/proxy?url=${encodeURIComponent(url)}`;
+        // Check if the URL is already encoded
+        const encodedUrl = url.includes('%') ? url : encodeURIComponent(url);
+        const proxyUrl = `${baseUrl}/api/proxy?url=${encodedUrl}`;
+        console.log('Original URL:', url);
+        console.log('Encoded URL:', encodedUrl);
         console.log('Proxied URL:', proxyUrl);
         return proxyUrl;
     }, []);
