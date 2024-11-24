@@ -28,6 +28,7 @@
     "zustand": "^5.0.1"
   },
   "devDependencies": {
+    "@netlify/plugin-nextjs": "^5.8.1",
     "eslint": "^8",
     "eslint-config-next": "15.0.3",
     "postcss": "^8",
