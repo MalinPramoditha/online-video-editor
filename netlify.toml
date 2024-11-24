@@ -5,19 +5,3 @@
 [build.environment]
   NEXT_USE_NETLIFY_EDGE = "true"
   NODE_VERSION = "18"
-  NEXT_TELEMETRY_DISABLED = "1"
-
-[[edge_functions]]
-  pattern = "/api/*"
-  function = "api"
-
-[[headers]]
-  for = "/*"
-  [headers.values]
-    Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, HEAD, POST, OPTIONS"
-    Access-Control-Allow-Headers = "Range, Content-Type"
-    Access-Control-Expose-Headers = "Content-Range, Content-Length, Accept-Ranges"
-
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
