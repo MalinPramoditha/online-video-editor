@@ -36,10 +36,10 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
     useEffect(() => {
         if (video) {
             console.log('Original video URL:', video);
-            // Use direct URL for display
-            setSelectedVideo(video);
-            // Use proxied URL for processing
+            // Always use proxy URL for both display and processing
             const proxiedUrl = getProxiedUrl(video);
+            console.log('Proxied URL:', proxiedUrl);
+            setSelectedVideo(proxiedUrl);
             setProcessingVideo(proxiedUrl);
         }
     }, [video, getProxiedUrl]);

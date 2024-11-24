@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 
 export const runtime = 'edge';
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 export async function GET(request) {
     try {
@@ -19,54 +17,53 @@ export async function GET(request) {
             'Accept': '*/*',
             'Accept-Language': 'en-US,en;q=0.9',
             'Origin': 'https://www.youtube.com',
-            'Referer': 'https://www.youtube.com/',
+            'Referer': 'https://www.youtube.com/'
         };
 
-        // Add range header if present in the request
+        // Forward range header if present
         const rangeHeader = request.headers.get('range');
         if (rangeHeader) {
             headers['Range'] = rangeHeader;
         }
 
-        const response = await fetch(url, {
-            method: 'GET',
-            headers,
-        });
+        const response = await fetch(url, { headers });
 
         if (!response.ok && response.status !== 206) {
-            console.error('Proxy error:', {
-                status: response.status,
-                statusText: response.statusText
-            });
-            return NextResponse.json({
+            console.error('Proxy error:', response.status, response.statusText);
+            return NextResponse.json({ 
                 error: 'Failed to fetch video',
                 status: response.status,
                 statusText: response.statusText
             }, { status: response.status });
         }
 
-        // Create response headers
+        // Get content type from response or default to video/mp4
+        const contentType = response.headers.get('content-type') || 'video/mp4';
+
+        // Create response headers with CORS
         const responseHeaders = new Headers({
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-            'Access-Control-Allow-Headers': 'Range',
-            'Access-Control-Expose-Headers': 'Content-Range, Content-Length, Accept-Ranges',
-            'Content-Type': response.headers.get('content-type') || 'video/mp4',
+            'Access-Control-Allow-Headers': '*',
+            'Access-Control-Expose-Headers': 'Content-Range, Content-Length, Accept-Ranges, Content-Type',
+            'Content-Type': contentType
         });
 
         // Forward important headers
         ['content-range', 'content-length', 'accept-ranges'].forEach(header => {
             const value = response.headers.get(header);
-            if (value) responseHeaders.set(header, value);
+            if (value) {
+                responseHeaders.set(header, value);
+            }
         });
 
         return new NextResponse(response.body, {
             status: response.status,
-            headers: responseHeaders,
+            headers: responseHeaders
         });
     } catch (error) {
         console.error('Proxy error:', error);
-        return NextResponse.json({
+        return NextResponse.json({ 
             error: 'Internal server error',
             message: error.message
         }, { 
@@ -74,7 +71,7 @@ export async function GET(request) {
             headers: {
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-                'Access-Control-Allow-Headers': 'Range'
+                'Access-Control-Allow-Headers': '*'
             }
         });
     }
@@ -86,8 +83,8 @@ export async function OPTIONS(request) {
         headers: {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-            'Access-Control-Allow-Headers': 'Range',
-            'Access-Control-Max-Age': '86400',
+            'Access-Control-Allow-Headers': '*',
+            'Access-Control-Max-Age': '86400'
         }
     });
 }
