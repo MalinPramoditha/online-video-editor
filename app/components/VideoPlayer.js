@@ -23,12 +23,13 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
     const [showPlayerSpeedControls, setShowPlayerSpeedControls] = useState(false);
     const [playbackSpeed, setPlaybackSpeed] = useState(1);
     const [frameSpeed, setFrameSpeed] = useState(1);
+    const [error, setError] = useState(null);
     const videoRef = useRef(null);
 
     // Get proxied video URL
     const getProxiedUrl = useCallback((url) => {
         if (!url) return '';
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
         const proxyUrl = `${baseUrl}/api/proxy?url=${encodeURIComponent(url)}`;
         console.log('Proxied URL:', proxyUrl);
         return proxyUrl;
@@ -41,6 +42,37 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
             setSelectedVideo(proxiedUrl);
         }
     }, [video, getProxiedUrl]);
+
+    useEffect(() => {
+        if (videoRef.current) {
+            const handleError = (e) => {
+                console.error('Video error:', e);
+                console.error('Video error details:', videoRef.current.error);
+                setError('Failed to load video. Please try again.');
+            };
+
+            const handleLoadedData = () => {
+                console.log('Video loaded successfully');
+                setError(null);
+            };
+
+            videoRef.current.addEventListener('error', handleError);
+            videoRef.current.addEventListener('loadeddata', handleLoadedData);
+
+            return () => {
+                if (videoRef.current) {
+                    videoRef.current.removeEventListener('error', handleError);
+                    videoRef.current.removeEventListener('loadeddata', handleLoadedData);
+                }
+            };
+        }
+    }, [selectedVideo]);
+
+    useEffect(() => {
+        if (videoRef.current && selectedVideo) {
+            videoRef.current.load();
+        }
+    }, [selectedVideo]);
 
     useEffect(() => {
         if (videoRef.current) {
@@ -75,12 +107,6 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
             return Math.min(0.10, Number((prev + 0.01).toFixed(2)));
         });
     }, []);
-
-    useEffect(() => {
-        if (videoRef.current) {
-            videoRef.current.load();
-        }
-    }, [selectedVideo]);
 
     useEffect(() => {
         if (videoRef.current) {
@@ -229,23 +255,22 @@ export default function VideoPlayer({ onScreenshotsChange, onTimelineImagesChang
     return (
     <div className='w-full flex flex-col gap-2'>
         <Card>
-            <CardContent className='py-6 w-full justify-center'>
+            <CardContent className='py-6 w-full justify-center relative aspect-video bg-black/5'>
+                {error && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-white">
+                        <p>{error}</p>
+                    </div>
+                )}
                 <video 
-                    src={videoSource}
-                    // controls 
+                    ref={videoRef}
+                    className='w-full max-h-[70vh] h-full object-contain bg-black'
+                    crossOrigin="anonymous"
                     playsInline
                     webkit-playsinline="true"
                     x5-playsinline="true"
-                    ref={videoRef}
-                    crossOrigin="anonymous"
-                    className='w-full max-h-[70vh] h-full object-contain bg-black'
-                    onLoadedMetadata={(e) => {
-                        if (videoRef.current) {
-                            setDuration(videoRef.current.duration);
-                            createTimeline();
-                        }
-                    }}
-                />
+                >
+                    {selectedVideo && <source src={selectedVideo} type="video/mp4" />}
+                </video>
             </CardContent>
             <CardFooter>
                 <div className='w-full flex flex-col justify-between items-center'>
