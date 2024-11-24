@@ -8,7 +8,7 @@ import useVideoStore from '@/app/store/videoStore';
 
 
 export default function Page() {
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState('https://www.youtube.com/watch?v=06Z-p5AqExY');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState();
 

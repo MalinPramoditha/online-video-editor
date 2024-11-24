@@ -2,16 +2,14 @@
   command = "npm run build"
   publish = ".next"
 
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
-
 [build.environment]
   NEXT_USE_NETLIFY_EDGE = "true"
   NODE_VERSION = "18"
   NEXT_TELEMETRY_DISABLED = "1"
 
 [[edge_functions]]
-function = "api/*"
+  path = "/api/*"
+  function = "api"
 
 [[headers]]
   for = "/*"
@@ -25,11 +23,5 @@ function = "api/*"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
 
-[[headers]]
-  for = "/api/*"
-  [headers.values]
-    Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, HEAD, OPTIONS, POST"
-    Access-Control-Allow-Headers = "Range, Accept, Content-Type"
-    Access-Control-Expose-Headers = "Content-Range, Content-Length, Accept-Ranges"
-    Cache-Control = "no-cache"
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

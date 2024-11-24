@@ -15,7 +15,11 @@ export async function GET(request) {
 
         // Create a unique session ID for this request
         const sessionId = Math.random().toString(36).substring(7);
-        console.log(`[${sessionId}] Proxying request for URL:`, url);
+        console.log(`[${sessionId}] Original URL:`, url);
+
+        // Decode URL if it's encoded
+        const decodedUrl = decodeURIComponent(url);
+        console.log(`[${sessionId}] Decoded URL:`, decodedUrl);
 
         // YouTube-specific headers
         const headers = {
@@ -24,11 +28,7 @@ export async function GET(request) {
             'Accept-Language': 'en-US,en;q=0.9',
             'Origin': 'https://www.youtube.com',
             'Referer': 'https://www.youtube.com/',
-            'Sec-Fetch-Dest': 'video',
-            'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Site': 'cross-site',
             'Connection': 'keep-alive',
-            'DNT': '1',
         };
 
         // Add range header if present in the request
@@ -40,14 +40,13 @@ export async function GET(request) {
 
         console.log(`[${sessionId}] Fetching with headers:`, headers);
 
-        const response = await fetch(url, {
+        const response = await fetch(decodedUrl, {
             method: 'GET',
             headers,
             redirect: 'follow',
         });
 
         console.log(`[${sessionId}] Response status:`, response.status);
-        console.log(`[${sessionId}] Response headers:`, Object.fromEntries(response.headers.entries()));
 
         if (!response.ok && response.status !== 206) {
             console.error(`[${sessionId}] Proxy error:`, {
@@ -69,11 +68,10 @@ export async function GET(request) {
         const responseHeaders = new Headers({
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-            'Access-Control-Allow-Headers': 'Range, Accept, Content-Type, Origin',
+            'Access-Control-Allow-Headers': 'Range, Accept, Content-Type',
             'Access-Control-Expose-Headers': 'Content-Range, Content-Length, Accept-Ranges',
             'Content-Type': contentType,
             'Accept-Ranges': 'bytes',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
         });
 
         // Forward important headers
@@ -112,7 +110,7 @@ export async function OPTIONS(request) {
         headers: {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-            'Access-Control-Allow-Headers': 'Range, Accept, Content-Type, Origin',
+            'Access-Control-Allow-Headers': 'Range, Accept, Content-Type',
             'Access-Control-Max-Age': '86400',
         }
     });
